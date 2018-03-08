@@ -37,6 +37,9 @@
     <Filter Include="ntos">
       <UniqueIdentifier>{621f3500-b7f1-418f-8901-7eff2d8c3a2d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ntuser">
+      <UniqueIdentifier>{5be5e969-9b4b-4fd7-b554-6fa6f58ed33e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aboutDlg.c">
@@ -483,5 +486,10 @@
     <Image Include="rsrc\mailslot.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="ntuser\StubNtUserOpenWindowStation.asm">
+      <Filter>ntuser</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

@@ -4,9 +4,9 @@
 *
 *  TITLE:       EXTAPI.H
 *
-*  VERSION:     1.52
+*  VERSION:     1.53
 *
-*  DATE:        08 Jan 2018
+*  DATE:        07 Mar 2018
 *
 *  Header file for Windows 10 new API which we cannot statically link.
 *
@@ -22,7 +22,7 @@ typedef NTSTATUS (NTAPI *pfnNtOpenPartition)(
     _Out_ PHANDLE PartitionHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes
-);
+    );
 
 typedef NTSTATUS (NTAPI *pfnNtManagePartition)(
     _In_ HANDLE TargetHandle,
@@ -30,11 +30,17 @@ typedef NTSTATUS (NTAPI *pfnNtManagePartition)(
     _In_ MEMORY_PARTITION_INFORMATION_CLASS PartitionInformationClass,
     _Inout_ PVOID PartitionInformation,
     _In_ SIZE_T PartitionInformationLength
-);
+    );
+
+typedef HWINSTA(NTAPI* pfnNtUserOpenWindowStation)(
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _In_ ACCESS_MASK DesiredAccess
+    );
 
 typedef struct _EXTENDED_API_SET {
     pfnNtOpenPartition NtOpenPartition;
     pfnNtManagePartition NtManagePartition;
+    pfnNtUserOpenWindowStation NtUserOpenWindowStation;
 } EXTENDED_API_SET, *PEXTENDED_API_SET;
 
 NTSTATUS ExApiSetInit(
@@ -42,3 +48,4 @@ NTSTATUS ExApiSetInit(
     );
 
 extern EXTENDED_API_SET g_ExtApiSet;
+

@@ -3126,6 +3126,7 @@ HWINSTA supOpenWindowStationFromContext(
     return hObject;
 }
 
+<<<<<<< HEAD
 /*
 HWINSTA supOpenWindowStationFromContext(
     _In_ PROP_OBJECT_INFO *Context,
@@ -3177,3 +3178,5 @@ HWINSTA supOpenWindowStationFromContext(
     SetLastError(RtlNtStatusToDosErrorNoTeb(Status));
     return hObject;
 }*/
+=======
+>>>>>>> refs/remotes/origin/master

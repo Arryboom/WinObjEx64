@@ -4,9 +4,15 @@
 *
 *  TITLE:       NTOS.H
 *
+<<<<<<< HEAD
 *  VERSION:     1.85
 *
 *  DATE:        20 Feb 2018
+=======
+*  VERSION:     1.86
+*
+*  DATE:        07 Mar 2018
+>>>>>>> refs/remotes/origin/master
 *
 *  Common header file for the ntos API functions and definitions.
 *
@@ -26,7 +32,11 @@
 #define PAGE_SIZE 0x1000ull
 #endif
 
+<<<<<<< HEAD
 typedef CCHAR KPROCESSOR_MODE; 
+=======
+typedef CCHAR KPROCESSOR_MODE;
+>>>>>>> refs/remotes/origin/master
 typedef UCHAR KIRQL;
 typedef KIRQL *PKIRQL;
 
@@ -577,12 +587,12 @@ typedef struct _SYSTEM_PROCESS_INFORMATION_EXTENSION {
     ULONG JobObjectId;
     ULONG SpareUlong;
     ULONGLONG ProcessSequenceNumber;
-} SYSTEM_PROCESS_INFORMATION_EXTENSION, *PSYSTEM_PROCESS_INFORMATION_EXTENSION;
-
+} SYSTEM_PROCESS_INFORMATION_EXTENSION, *PSYSTEM_PROCESS_INFORMATION_EXTENSION; 
+                                                              
 typedef struct _SYSTEM_PROCESSES_FULL_INFORMATION {
     SYSTEM_PROCESSES_INFORMATION ProcessAndThreads;
     SYSTEM_PROCESS_INFORMATION_EXTENSION ExtendedInfo;
-} SYSTEM_PROCESSES_FULL_INFORMATION, *PSYSTEM_PROCESSES_FULL_INFORMATION;*/
+} SYSTEM_PROCESSES_FULL_INFORMATION, *PSYSTEM_PROCESSES_FULL_INFORMATION;  */
 
 typedef struct _SYSTEM_SECUREBOOT_INFORMATION {
     BOOLEAN SecureBootEnabled;
@@ -1267,11 +1277,16 @@ typedef enum _SYSTEM_INFORMATION_CLASS {
     SystemProcessorIdleMaskInformation = 193,
     SystemSecureDumpEncryptionInformation = 194,
     SystemWriteConstraintInformation = 195,
+<<<<<<< HEAD
     SystemKvaShadowFlags = 196,
+=======
+    SystemKernelVaShadowInformation = 196,
+>>>>>>> refs/remotes/origin/master
     ReservedRS4_1 = 197,
     ReservedRS4_2 = 198,
     ReservedRS4_3 = 199,
     ReservedRS4_4 = 200,
+<<<<<<< HEAD
     SystemSpeculationControlFlags = 201,
     MaxSystemInfoClass
 } SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
@@ -1307,6 +1322,36 @@ typedef struct _SYSTEM_KVA_SHADOW_FLAGS {
         ULONG kvaFlags;
     } DUMMYUNIONNAME;
 } SYSTEM_KVA_SHADOW_FLAGS, *PSYSTEM_KVA_SHADOW_FLAGS;
+=======
+    SystemSpeculationControlInformation = 201,
+    MaxSystemInfoClass
+} SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
+
+//msdn.microsoft.com/en-us/library/windows/desktop/ms724509(v=vs.85).aspx
+typedef struct _SYSTEM_SPECULATION_CONTROL_INFORMATION {
+    struct {
+        ULONG BpbEnabled : 1;
+        ULONG BpbDisabledSystemPolicy : 1;
+        ULONG BpbDisabledNoHardwareSupport : 1;
+        ULONG SpecCtrlEnumerated : 1;
+        ULONG SpecCmdEnumerated : 1;
+        ULONG IbrsPresent : 1;
+        ULONG StibpPresent : 1;
+        ULONG SmepPresent : 1;
+        ULONG Reserved : 24;
+    } SpeculationControlFlags;
+} SYSTEM_SPECULATION_CONTROL_INFORMATION, *PSYSTEM_SPECULATION_CONTROL_INFORMATION;
+
+typedef struct _SYSTEM_KERNEL_VA_SHADOW_INFORMATION {
+    struct {
+        ULONG KvaShadowEnabled : 1;
+        ULONG KvaShadowUserGlobal : 1;
+        ULONG KvaShadowPcid : 1;
+        ULONG KvaShadowInvpcid : 1;
+        ULONG Reserved : 28;
+    } KvaShadowFlags;
+} SYSTEM_KERNEL_VA_SHADOW_INFORMATION, *PSYSTEM_KERNEL_VA_SHADOW_INFORMATION;
+>>>>>>> refs/remotes/origin/master
 
 typedef struct _SYSTEM_CODEINTEGRITY_INFORMATION {
     ULONG  Length;

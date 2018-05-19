@@ -49,6 +49,7 @@ NTSTATUS ExApiSetInit(
     if (hNtdll) {
         g_ExtApiSet.NtOpenPartition = (pfnNtOpenPartition)GetProcAddress(hNtdll, "NtOpenPartition");
         g_ExtApiSet.NtManagePartition = (pfnNtManagePartition)GetProcAddress(hNtdll, "NtManagePartition");
+<<<<<<< HEAD
 
         if ((g_ExtApiSet.NtOpenPartition) &&
             (g_ExtApiSet.NtManagePartition))
@@ -100,5 +101,13 @@ NTSTATUS ExApiSetInit(
         }
 
     }
+=======
+
+        if ((g_ExtApiSet.NtOpenPartition) &&
+            (g_ExtApiSet.NtManagePartition))
+            Status = STATUS_SUCCESS;
+    }
+
+>>>>>>> refs/remotes/origin/master
     return Status;
 }

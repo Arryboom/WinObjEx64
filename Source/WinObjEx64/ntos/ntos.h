@@ -4,15 +4,9 @@
 *
 *  TITLE:       NTOS.H
 *
-<<<<<<< HEAD
-*  VERSION:     1.85
+*  VERSION:     1.90
 *
-*  DATE:        20 Feb 2018
-=======
-*  VERSION:     1.86
-*
-*  DATE:        07 Mar 2018
->>>>>>> refs/remotes/origin/master
+*  DATE:        25 Aug 2018
 *
 *  Common header file for the ntos API functions and definitions.
 *
@@ -23,6 +17,9 @@
 *
 ************************************************************************************/
 
+#ifndef NTOS_RTL
+#define NTOS_RTL
+
 #pragma comment(lib, "ntdll.lib")
 
 #pragma warning(push)
@@ -32,11 +29,7 @@
 #define PAGE_SIZE 0x1000ull
 #endif
 
-<<<<<<< HEAD
-typedef CCHAR KPROCESSOR_MODE; 
-=======
 typedef CCHAR KPROCESSOR_MODE;
->>>>>>> refs/remotes/origin/master
 typedef UCHAR KIRQL;
 typedef KIRQL *PKIRQL;
 
@@ -64,9 +57,29 @@ typedef KIRQL *PKIRQL;
 #define LOGICAL ULONG
 #endif
 
+//
+// ntdef.h begin
+//
 #ifndef RTL_CONSTANT_STRING
-#define RTL_CONSTANT_STRING(s) { sizeof( s ) - sizeof( (s)[0] ), sizeof( s ), s }
+char _RTL_CONSTANT_STRING_type_check(const void *s);
+#define _RTL_CONSTANT_STRING_remove_const_macro(s) (s)
+#define RTL_CONSTANT_STRING(s) \
+{ \
+    sizeof( s ) - sizeof( (s)[0] ), \
+    sizeof( s ) / sizeof(_RTL_CONSTANT_STRING_type_check(s)), \
+    _RTL_CONSTANT_STRING_remove_const_macro(s) \
+}
 #endif
+
+#define RTL_CONSTANT_OBJECT_ATTRIBUTES(n, a) \
+    { sizeof(OBJECT_ATTRIBUTES), NULL, RTL_CONST_CAST(PUNICODE_STRING)(n), a, NULL, NULL }
+
+// This synonym is more appropriate for initializing what isn't actually const.
+#define RTL_INIT_OBJECT_ATTRIBUTES(n, a) RTL_CONSTANT_OBJECT_ATTRIBUTES(n, a)
+
+//
+// ntdef.h end
+//
 
 #define RtlOffsetToPointer(B,O)  ((PCHAR)( ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
 #define RtlPointerToOffset(B,P)  ((ULONG)( ((PCHAR)(P)) - ((PCHAR)(B))  ))
@@ -512,15 +525,17 @@ typedef struct _SYSTEM_PROCESSES_INFORMATION {
     IO_COUNTERS IoCounters;
     SYSTEM_THREAD_INFORMATION Threads[1];
 } SYSTEM_PROCESSES_INFORMATION, *PSYSTEM_PROCESSES_INFORMATION;
-/*
+
 typedef enum _SYSTEM_PROCESS_CLASSIFICATION {
     SystemProcessClassificationNormal,
     SystemProcessClassificationSystem,
     SystemProcessClassificationSecureSystem,
     SystemProcessClassificationMemCompression,
+    SystemProcessClassificationRegistry,
     SystemProcessClassificationMaximum
 } SYSTEM_PROCESS_CLASSIFICATION;
 
+/*
 typedef struct _PROCESS_DISK_COUNTERS {
     ULONGLONG BytesRead;
     ULONGLONG BytesWritten;
@@ -722,7 +737,10 @@ typedef enum _PROCESSINFOCLASS {
     ProcessEnableReadWriteVmLogging = 87,
     ProcessUptimeInformation = 88,
     ProcessImageSection = 89,
-    MaxProcessInfoClass = 90
+    ProcessDebugAuthInformation = 90,
+    ProcessSystemResourceManagement = 91,
+    ProcessSequenceNumber = 92,
+    MaxProcessInfoClass
 } PROCESSINFOCLASS;
 
 typedef enum _THREADINFOCLASS {
@@ -788,6 +806,15 @@ typedef struct _PROCESS_BASIC_INFORMATION {
     ULONG_PTR InheritedFromUniqueProcessId;
 } PROCESS_BASIC_INFORMATION;
 typedef PROCESS_BASIC_INFORMATION *PPROCESS_BASIC_INFORMATION;
+
+typedef struct _THREAD_BASIC_INFORMATION {
+    NTSTATUS ExitStatus;
+    PVOID TebBaseAddress;
+    CLIENT_ID ClientId;
+    ULONG_PTR AffinityMask;
+    KPRIORITY Priority;
+    LONG BasePriority;
+} THREAD_BASIC_INFORMATION, *PTHREAD_BASIC_INFORMATION;
 
 typedef struct _PROCESS_EXTENDED_BASIC_INFORMATION {
     SIZE_T Size;
@@ -861,7 +888,8 @@ typedef enum _PS_MITIGATION_OPTION {
     PS_MITIGATION_OPTION_EXPORT_ADDRESS_FILTER_PLUS,
     PS_MITIGATION_OPTION_RESTRICT_CHILD_PROCESS_CREATION,
     PS_MITIGATION_OPTION_IMPORT_ADDRESS_FILTER,
-    PS_MITIGATION_OPTION_MODULE_TAMPERING_PROTECTION
+    PS_MITIGATION_OPTION_MODULE_TAMPERING_PROTECTION,
+    PS_MITIGATION_OPTION_RESTRICT_INDIRECT_BRANCH_PREDICTION
 } PS_MITIGATION_OPTION;
 
 typedef enum _PS_CREATE_STATE {
@@ -1277,53 +1305,14 @@ typedef enum _SYSTEM_INFORMATION_CLASS {
     SystemProcessorIdleMaskInformation = 193,
     SystemSecureDumpEncryptionInformation = 194,
     SystemWriteConstraintInformation = 195,
-<<<<<<< HEAD
-    SystemKvaShadowFlags = 196,
-=======
     SystemKernelVaShadowInformation = 196,
->>>>>>> refs/remotes/origin/master
-    ReservedRS4_1 = 197,
-    ReservedRS4_2 = 198,
-    ReservedRS4_3 = 199,
-    ReservedRS4_4 = 200,
-<<<<<<< HEAD
-    SystemSpeculationControlFlags = 201,
-    MaxSystemInfoClass
-} SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
-
-//gallery.technet.microsoft.com/scriptcenter/Speculation-Control-e36f0050
-typedef struct _SYSTEM_SPECULATION_CONTROL_FLAGS {
-    union {
-        struct {
-            ULONG scfBpbEnabled : 1;
-            ULONG scfBpbDisabledSystemPolicy : 1;
-            ULONG scfBpbDisabledNoHardwareSupport : 1;
-            ULONG scfHwReg1Enumerated : 1;
-            ULONG scfHwReg2Enumerated : 1;
-            ULONG scfHwMode1Present : 1;
-            ULONG scfHwMode2Present : 1;
-            ULONG scfSmepPresent : 1;
-            ULONG Unused : 24;
-        } DUMMYSTRUCTNAME;
-        ULONG scFlags;
-    } DUMMYUNIONNAME;
-} SYSTEM_SPECULATION_CONTROL_FLAGS, *PSYSTEM_SPECULATION_CONTROL_FLAGS;
-
-//gallery.technet.microsoft.com/scriptcenter/Speculation-Control-e36f0050
-typedef struct _SYSTEM_KVA_SHADOW_FLAGS {
-    union {
-        struct {
-            ULONG kvaShadowEnabledFlag : 1;
-            ULONG kvaShadowUserGlobalFlag : 1;
-            ULONG kvaShadowPcidFlag : 1;
-            ULONG kvaShadowInvpcidFlag : 1;
-            ULONG Unused : 28;
-        } DUMMYSTRUCTNAME;
-        ULONG kvaFlags;
-    } DUMMYUNIONNAME;
-} SYSTEM_KVA_SHADOW_FLAGS, *PSYSTEM_KVA_SHADOW_FLAGS;
-=======
+    SystemHypervisorSharedPageInformation = 197,
+    SystemFirmwareBootPerformanceInformation = 198,
+    SystemCodeIntegrityVerificationInformation = 199,
+    SystemFirmwarePartitionInformation = 200,
     SystemSpeculationControlInformation = 201,
+    SystemDmaGuardPolicyInformation = 202,
+    SystemEnclaveLaunchControlInformation,
     MaxSystemInfoClass
 } SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
 
@@ -1348,10 +1337,11 @@ typedef struct _SYSTEM_KERNEL_VA_SHADOW_INFORMATION {
         ULONG KvaShadowUserGlobal : 1;
         ULONG KvaShadowPcid : 1;
         ULONG KvaShadowInvpcid : 1;
-        ULONG Reserved : 28;
+        ULONG KvaShadowRequired : 1;
+        ULONG KvaShadowRequiredAvailable : 1;
+        ULONG Reserved : 26;
     } KvaShadowFlags;
 } SYSTEM_KERNEL_VA_SHADOW_INFORMATION, *PSYSTEM_KERNEL_VA_SHADOW_INFORMATION;
->>>>>>> refs/remotes/origin/master
 
 typedef struct _SYSTEM_CODEINTEGRITY_INFORMATION {
     ULONG  Length;
@@ -4120,7 +4110,8 @@ typedef struct _PEB {
             ULONG ProcessUsingFTH : 1;
             ULONG ProcessPreviouslyThrottled : 1;
             ULONG ProcessCurrentlyThrottled : 1;
-            ULONG ReservedBits0 : 25;
+            ULONG ProcessImagesHotPatched : 1;
+            ULONG ReservedBits0 : 24;
         };
         ULONG EnvironmentUpdateCount;
     };
@@ -4396,6 +4387,8 @@ __inline struct _PEB * NtCurrentPeb() { return NtCurrentTeb()->ProcessEnvironmen
 ** PEB/TEB END
 */
 
+
+
 /*
 ** ALPC START
 */
@@ -4476,6 +4469,158 @@ typedef struct _REMOTE_PORT_VIEW {
 //#pragma pack(pop)
 /*
 ** ALPC END
+*/
+
+/*
+**  MITIGATION POLICY START
+*/
+
+//redefine enum
+
+#define ProcessDEPPolicy                    0
+#define ProcessASLRPolicy                   1
+#define ProcessDynamicCodePolicy            2
+#define ProcessStrictHandleCheckPolicy      3
+#define ProcessSystemCallDisablePolicy      4
+#define ProcessMitigationOptionsMask        5
+#define ProcessExtensionPointDisablePolicy  6
+#define ProcessControlFlowGuardPolicy       7
+#define ProcessSignaturePolicy              8
+#define ProcessFontDisablePolicy            9
+#define ProcessImageLoadPolicy              10
+#define ProcessSystemCallFilterPolicy       11
+#define ProcessPayloadRestrictionPolicy     12
+#define ProcessChildProcessPolicy           13
+#define ProcessSideChannelIsolationPolicy   14
+
+typedef struct tagPROCESS_MITIGATION_BINARY_SIGNATURE_POLICY_W10 {
+    union {
+        DWORD Flags;
+        struct {
+            DWORD MicrosoftSignedOnly : 1;
+            DWORD StoreSignedOnly : 1;
+            DWORD MitigationOptIn : 1;
+            DWORD AuditMicrosoftSignedOnly : 1;
+            DWORD AuditStoreSignedOnly : 1;
+            DWORD ReservedFlags : 27;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY_W10, *PPROCESS_MITIGATION_BINARY_SIGNATURE_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_DYNAMIC_CODE_POLICY_W10 {
+    union {
+        DWORD Flags;
+        struct {
+            DWORD ProhibitDynamicCode : 1;
+            DWORD AllowThreadOptOut : 1;
+            DWORD AllowRemoteDowngrade : 1;
+            DWORD AuditProhibitDynamicCode : 1;
+            DWORD ReservedFlags : 28;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_DYNAMIC_CODE_POLICY_W10, *PPROCESS_MITIGATION_DYNAMIC_CODE_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY_W10 {
+    union {
+        DWORD Flags;
+        struct {
+            DWORD EnableControlFlowGuard : 1;
+            DWORD EnableExportSuppression : 1;
+            DWORD StrictMode : 1;
+            DWORD ReservedFlags : 29;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY_W10, *PPROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_FONT_DISABLE_POLICY_W10 {
+    union {
+        DWORD Flags;
+        struct {
+            DWORD DisableNonSystemFonts : 1;
+            DWORD AuditNonSystemFontLoading : 1;
+            DWORD ReservedFlags : 30;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_FONT_DISABLE_POLICY_W10, *PPROCESS_MITIGATION_FONT_DISABLE_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_IMAGE_LOAD_POLICY_W10 {
+    union {
+        DWORD Flags;
+        struct {
+            DWORD NoRemoteImages : 1;
+            DWORD NoLowMandatoryLabelImages : 1;
+            DWORD PreferSystem32Images : 1;
+            DWORD AuditNoRemoteImages : 1;
+            DWORD AuditNoLowMandatoryLabelImages : 1;
+            DWORD ReservedFlags : 27;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_IMAGE_LOAD_POLICY_W10, *PPROCESS_MITIGATION_IMAGE_LOAD_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY_W10 {
+    union {
+        ULONG Flags;
+        struct {
+            ULONG FilterId : 4;
+            ULONG ReservedFlags : 28;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY_W10, *PPROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY_W10 {
+    union {
+        ULONG Flags;
+        struct {
+            ULONG EnableExportAddressFilter : 1;
+            ULONG AuditExportAddressFilter : 1;
+            ULONG EnableExportAddressFilterPlus : 1;
+            ULONG AuditExportAddressFilterPlus : 1;
+            ULONG EnableImportAddressFilter : 1;
+            ULONG AuditImportAddressFilter : 1;
+            ULONG EnableRopStackPivot : 1;
+            ULONG AuditRopStackPivot : 1;
+            ULONG EnableRopCallerCheck : 1;
+            ULONG AuditRopCallerCheck : 1;
+            ULONG EnableRopSimExec : 1;
+            ULONG AuditRopSimExec : 1;
+            ULONG ReservedFlags : 20;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY_W10, *PPROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY_W10;
+
+typedef struct tagPROCESS_MITIGATION_CHILD_PROCESS_POLICY_W10 {
+    union {
+        ULONG Flags;
+        struct {
+            ULONG NoChildProcessCreation : 1;
+            ULONG AuditNoChildProcessCreation : 1;
+            ULONG AllowSecureProcessCreation : 1;
+            ULONG ReservedFlags : 29;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_CHILD_PROCESS_POLICY_W10, *PPROCESS_MITIGATION_CHILD_PROCESS_POLICY_W10;
+
+typedef struct _PROCESS_MITIGATION_POLICY_INFORMATION {
+    PROCESS_MITIGATION_POLICY Policy;
+    union
+    {
+        PROCESS_MITIGATION_ASLR_POLICY ASLRPolicy;
+        PROCESS_MITIGATION_STRICT_HANDLE_CHECK_POLICY StrictHandleCheckPolicy;
+        PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY SystemCallDisablePolicy;
+        PROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY ExtensionPointDisablePolicy;
+        PROCESS_MITIGATION_DYNAMIC_CODE_POLICY_W10 DynamicCodePolicy;
+        PROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY_W10 ControlFlowGuardPolicy;
+        PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY_W10 SignaturePolicy;
+        PROCESS_MITIGATION_FONT_DISABLE_POLICY_W10 FontDisablePolicy;
+        PROCESS_MITIGATION_IMAGE_LOAD_POLICY_W10 ImageLoadPolicy;
+        PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY_W10 SystemCallFilterPolicy;
+        PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY_W10 PayloadRestrictionPolicy;
+        PROCESS_MITIGATION_CHILD_PROCESS_POLICY_W10 ChildProcessPolicy;
+    };
+} PROCESS_MITIGATION_POLICY_INFORMATION, *PPROCESS_MITIGATION_POLICY_INFORMATION;
+ 
+/*
+**  MITIGATION POLICY END
 */
 
 /*
@@ -4763,6 +4908,9 @@ NTSTATUS NTAPI LdrQueryImageFileKeyOption(
     _In_ ULONG BufferSize,
     _Out_opt_ PULONG ResultSize);
 
+NTSTATUS NTAPI LdrDisableThreadCalloutsForDll(
+    _In_ PVOID DllImageBase);
+
 #define LDR_LOCK_LOADER_LOCK_FLAG_RAISE_ON_ERRORS           0x00000001
 #define LDR_LOCK_LOADER_LOCK_FLAG_TRY_ONLY                  0x00000002
 
@@ -4866,13 +5014,21 @@ BOOLEAN NTAPI RtlCreateUnicodeString(
     _Out_ PUNICODE_STRING DestinationString,
     _In_ PCWSTR SourceString);
 
+BOOLEAN NTAPI RtlCreateUnicodeStringFromAsciiz(
+    _Out_ PUNICODE_STRING DestinationString,
+    _In_ PSTR SourceString);
+
 VOID NTAPI RtlInitString(
     _Inout_ PSTRING DestinationString,
     _In_ PCSZ SourceString);
 
 VOID NTAPI RtlInitUnicodeString(
-    _Inout_	PUNICODE_STRING DestinationString,
+    _Out_ PUNICODE_STRING DestinationString,
     _In_opt_ PCWSTR SourceString);
+
+NTSTATUS NTAPI RtlInitUnicodeStringEx(
+    _Out_ PUNICODE_STRING DestinationString,
+    _In_opt_ PWSTR SourceString);
 
 BOOLEAN NTAPI RtlEqualUnicodeString(
     _In_ PCUNICODE_STRING String1,
@@ -5003,6 +5159,10 @@ NTSTATUS NTAPI RtlAppendUnicodeStringToString(
 NTSTATUS NTAPI RtlAppendUnicodeToString(
     _In_ PUNICODE_STRING Destination,
     _In_opt_ PWSTR Source);
+
+VOID NTAPI RtlCopyUnicodeString(
+    _In_ PUNICODE_STRING DestinationString,
+    _In_ PUNICODE_STRING SourceString);
 
 NTSTATUS NTAPI RtlUpcaseUnicodeString(
     _Inout_ PUNICODE_STRING DestinationString,
@@ -5186,6 +5346,10 @@ PVOID NTAPI RtlAddVectoredExceptionHandler(
 ULONG NTAPI RtlRemoveVectoredExceptionHandler(
     _In_ PVOID Handle);
 
+BOOLEAN NTAPI RtlDispatchException(
+    _In_ PEXCEPTION_RECORD ExceptionRecord,
+    _In_ PCONTEXT ContextRecord);
+
 PVOID NTAPI RtlAddVectoredContinueHandler(
     _In_ ULONG First,
     _In_ PVECTORED_EXCEPTION_HANDLER Handler);
@@ -5195,6 +5359,18 @@ ULONG NTAPI RtlRemoveVectoredContinueHandler(
 
 VOID NTAPI RtlRaiseException(
     _In_ PEXCEPTION_RECORD ExceptionRecord);
+
+DECLSPEC_NORETURN VOID NTAPI RtlRaiseStatus(
+    _In_ NTSTATUS Status);
+
+NTSTATUS NTAPI NtContinue(
+    _In_ PCONTEXT ContextRecord,
+    _In_ BOOLEAN TestAlert);
+
+NTSTATUS NTAPI NtRaiseException(
+    _In_ PEXCEPTION_RECORD ExceptionRecord,
+    _In_ PCONTEXT ContextRecord,
+    _In_ BOOLEAN FirstChance);
 
 /************************************************************************************
 *
@@ -5223,6 +5399,140 @@ NTSTATUS NTAPI RtlGetSaclSecurityDescriptor(
     _Out_ PBOOLEAN SaclPresent,
     _Out_ PACL *Sacl,
     _Out_ PBOOLEAN SaclDefaulted);
+
+NTSTATUS NTAPI RtlCreateAcl(
+    _Out_writes_bytes_(AclLength) PACL Acl,
+    _In_ ULONG AclLength,
+    _In_ ULONG AclRevision);
+
+BOOLEAN NTAPI RtlValidAcl(
+    _In_ PACL Acl);
+
+NTSTATUS NTAPI RtlQueryInformationAcl(
+    _In_ PACL Acl,
+    _Out_writes_bytes_(AclInformationLength) PVOID AclInformation,
+    _In_ ULONG AclInformationLength,
+    _In_ ACL_INFORMATION_CLASS AclInformationClass);
+
+NTSTATUS NTAPI RtlSetInformationAcl(
+    _Inout_ PACL Acl,
+    _In_reads_bytes_(AclInformationLength) PVOID AclInformation,
+    _In_ ULONG AclInformationLength,
+    _In_ ACL_INFORMATION_CLASS AclInformationClass);
+
+NTSTATUS NTAPI RtlAddAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG StartingAceIndex,
+    _In_reads_bytes_(AceListLength) PVOID AceList,
+    _In_ ULONG AceListLength);
+
+NTSTATUS NTAPI RtlDeleteAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceIndex);
+
+NTSTATUS NTAPI RtlGetAce(
+    _In_ PACL Acl,
+    _In_ ULONG AceIndex,
+    _Outptr_ PVOID *Ace);
+
+BOOLEAN NTAPI RtlFirstFreeAce(
+    _In_ PACL Acl,
+    _Out_ PVOID *FirstFree);
+
+BOOLEAN NTAPI RtlOwnerAcesPresent(
+    _In_ PACL pAcl);
+
+NTSTATUS NTAPI RtlAddAccessAllowedAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAccessAllowedAceEx(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAccessDeniedAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAccessDeniedAceEx(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAuditAccessAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid,
+    _In_ BOOLEAN AuditSuccess,
+    _In_ BOOLEAN AuditFailure);
+
+NTSTATUS NTAPI RtlAddAuditAccessAceEx(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID Sid,
+    _In_ BOOLEAN AuditSuccess,
+    _In_ BOOLEAN AuditFailure);
+
+NTSTATUS NTAPI RtlAddAccessAllowedObjectAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_opt_ GUID *ObjectTypeGuid,
+    _In_opt_ GUID *InheritedObjectTypeGuid,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAccessDeniedObjectAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_opt_ GUID *ObjectTypeGuid,
+    _In_opt_ GUID *InheritedObjectTypeGuid,
+    _In_ PSID Sid);
+
+NTSTATUS NTAPI RtlAddAuditAccessObjectAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ ACCESS_MASK AccessMask,
+    _In_opt_ GUID *ObjectTypeGuid,
+    _In_opt_ GUID *InheritedObjectTypeGuid,
+    _In_ PSID Sid,
+    _In_ BOOLEAN AuditSuccess,
+    _In_ BOOLEAN AuditFailure);
+
+NTSTATUS NTAPI RtlAddCompoundAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ UCHAR AceType,
+    _In_ ACCESS_MASK AccessMask,
+    _In_ PSID ServerSid,
+    _In_ PSID ClientSid);
+
+NTSTATUS NTAPI RtlAddMandatoryAce(
+    _Inout_ PACL Acl,
+    _In_ ULONG AceRevision,
+    _In_ ULONG AceFlags,
+    _In_ PSID Sid,
+    _In_ UCHAR AceType,
+    _In_ ACCESS_MASK AccessMask);
+
+NTSTATUS NTAPI RtlDefaultNpAcl(
+    _Out_ PACL *Acl);
 
 ULONG NTAPI RtlLengthSecurityDescriptor(
     _In_ PSECURITY_DESCRIPTOR SecurityDescriptor);
@@ -5310,6 +5620,10 @@ NTSTATUS NTAPI RtlSetOwnerSecurityDescriptor(
     _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
     _In_ PSID Owner,
     _In_ BOOLEAN OwnerDefaulted);
+
+NTSTATUS NTAPI RtlCopySecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR InputSecurityDescriptor,
+    _Out_ PSECURITY_DESCRIPTOR *OutputSecurityDescriptor);
 
 FORCEINLINE LUID NTAPI RtlConvertLongToLuid(
     _In_ LONG Long
@@ -6034,7 +6348,7 @@ NTSTATUS NTAPI NtCreateTimer(
     _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
     _In_ TIMER_TYPE TimerType);
 
-NTSTATUS NtSetTimer(
+NTSTATUS NTAPI NtSetTimer(
     _In_ HANDLE TimerHandle,
     _In_ PLARGE_INTEGER DueTime,
     _In_opt_ PTIMER_APC_ROUTINE TimerApcRoutine,
@@ -6631,7 +6945,8 @@ typedef enum _MEMORY_PARTITION_INFORMATION_CLASS {
     SystemMemoryPartitionAddPagefile,
     SystemMemoryPartitionCombineMemory,
     SystemMemoryPartitionInitialAddMemory,
-    SystemMemoryPartitionGetMemoryEvents
+    SystemMemoryPartitionGetMemoryEvents,
+    SystemMemoryPartitionMax
 } MEMORY_PARTITION_INFORMATION_CLASS;
 
 typedef struct _MEMORY_PARTITION_PAGE_RANGE {
@@ -6690,7 +7005,7 @@ NTSTATUS NTAPI NtCreateSection(
     _In_ ULONG AllocationAttributes,
     _In_opt_ HANDLE FileHandle);
 
-NTSTATUS NtOpenSection(
+NTSTATUS NTAPI NtOpenSection(
     _Out_ PHANDLE SectionHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes);
@@ -6935,6 +7250,16 @@ NTSTATUS NTAPI NtCreateKey(
     _In_ ULONG CreateOptions,
     _Out_opt_ PULONG Disposition);
 
+NTSTATUS NTAPI NtCreateKeyTransacted(
+    _Out_ PHANDLE KeyHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _Reserved_ ULONG TitleIndex,
+    _In_opt_ PUNICODE_STRING Class,
+    _In_ ULONG CreateOptions,
+    _In_ HANDLE TransactionHandle,
+    _Out_opt_ PULONG Disposition);
+
 NTSTATUS NTAPI NtOpenKey(
     _Out_ PHANDLE KeyHandle,
     _In_ ACCESS_MASK DesiredAccess,
@@ -6945,6 +7270,19 @@ NTSTATUS NTAPI NtOpenKeyEx(
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
     _In_ ULONG OpenOptions);
+
+NTSTATUS NTAPI NtOpenKeyTransacted(
+    _Out_ PHANDLE KeyHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _In_ HANDLE TransactionHandle);
+
+NTSTATUS NTAPI NtOpenKeyTransactedEx(
+    _Out_ PHANDLE KeyHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _In_ ULONG OpenOptions,
+    _In_ HANDLE TransactionHandle);
 
 NTSTATUS NTAPI NtQueryKey(
     _In_ HANDLE KeyHandle,
@@ -6961,6 +7299,14 @@ NTSTATUS NTAPI NtEnumerateKey(
     _In_ ULONG Length,
     _Out_ PULONG ResultLength);
 
+NTSTATUS NTAPI NtEnumerateValueKey(
+    _In_ HANDLE KeyHandle,
+    _In_ ULONG Index,
+    _In_ KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,
+    _Out_writes_bytes_opt_(Length) PVOID KeyValueInformation,
+    _In_ ULONG Length,
+    _Out_ PULONG ResultLength);
+
 NTSTATUS NTAPI NtQueryValueKey(
     _In_ HANDLE KeyHandle,
     _In_ PUNICODE_STRING ValueName,
@@ -6968,6 +7314,14 @@ NTSTATUS NTAPI NtQueryValueKey(
     _Out_ PVOID KeyValueInformation,
     _In_ ULONG Length,
     _Out_ PULONG ResultLength);
+
+NTSTATUS NTAPI NtQueryMultipleValueKey(
+    _In_ HANDLE KeyHandle,
+    _Inout_updates_(EntryCount) PKEY_VALUE_ENTRY ValueEntries,
+    _In_ ULONG EntryCount,
+    _Out_writes_bytes_(*BufferLength) PVOID ValueBuffer,
+    _Inout_ PULONG BufferLength,
+    _Out_opt_ PULONG RequiredBufferLength);
 
 NTSTATUS NTAPI NtSetValueKey(
     _In_ HANDLE KeyHandle,
@@ -7110,7 +7464,7 @@ typedef struct _IO_COMPLETION_BASIC_INFORMATION {
     LONG Depth;
 } IO_COMPLETION_BASIC_INFORMATION, *PIO_COMPLETION_BASIC_INFORMATION;
 
-NTSTATUS NtCreateIoCompletion(
+NTSTATUS NTAPI NtCreateIoCompletion(
     _Out_ PHANDLE IoCompletionHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
@@ -7940,3 +8294,5 @@ VOID NTAPI RtlApplicationVerifierStop(
 #endif
 
 #pragma warning(pop)
+
+#endif NTOS_RTL

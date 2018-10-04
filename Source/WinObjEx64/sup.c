@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.53
+*  VERSION:     1.55
 *
-*  DATE:        07 Mar 2018
+*  DATE:        07 Sep 2018
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -54,7 +54,7 @@ ULONG g_cHeapAlloc = 0;
 *
 */
 #ifndef _DEBUG
-PVOID FORCEINLINE supHeapAlloc(
+FORCEINLINE PVOID supHeapAlloc(
     _In_ SIZE_T Size)
 {
     return RtlAllocateHeap(g_WinObj.Heap, HEAP_ZERO_MEMORY, Size);
@@ -100,7 +100,7 @@ PVOID supHeapAlloc(
 *
 */
 #ifndef _DEBUG
-BOOL FORCEINLINE supHeapFree(
+FORCEINLINE BOOL supHeapFree(
     _In_ PVOID Memory)
 {
     return RtlFreeHeap(g_WinObj.Heap, 0, Memory);
@@ -1267,8 +1267,6 @@ VOID supxMapNtdllCopy(
 
     WCHAR  szDllPath[MAX_PATH * 2];
 
-    usFileName.Buffer = NULL;
-
     RtlSecureZeroMemory(szDllPath, sizeof(szDllPath));
     _strcpy(szDllPath, TEXT("\\??\\"));
     _strcat(szDllPath, g_WinObj.szSystemDirectory);
@@ -1391,7 +1389,6 @@ VOID supQueryKnownDlls(
     g_lpKnownDlls32 = NULL;
     g_lpKnownDlls64 = NULL;
 
-    RtlSecureZeroMemory(&KnownDlls, sizeof(KnownDlls));
     RtlInitUnicodeString(&KnownDlls, L"\\KnownDlls32\\KnownDllPath");
     supxQueryKnownDllsLink(&KnownDlls, &g_lpKnownDlls32);
     RtlInitUnicodeString(&KnownDlls, L"\\KnownDlls\\KnownDllPath");
@@ -2474,19 +2471,20 @@ HANDLE supOpenDirectory(
     _In_ LPWSTR lpDirectory
 )
 {
-    HANDLE            hDirectory;
+    HANDLE            hDirectory = NULL;
     UNICODE_STRING    ustr;
     OBJECT_ATTRIBUTES obja;
 
-    if (lpDirectory == NULL) {
-        return NULL;
-    }
-    RtlSecureZeroMemory(&ustr, sizeof(ustr));
     RtlInitUnicodeString(&ustr, lpDirectory);
     InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-    hDirectory = NULL;
-    NtOpenDirectoryObject(&hDirectory, DIRECTORY_QUERY, &obja);
+   
+    if (!NT_SUCCESS(NtOpenDirectoryObject(
+        &hDirectory,
+        DIRECTORY_QUERY,
+        &obja)))
+    {
+        return NULL;
+    }
 
     return hDirectory;
 }
@@ -2879,7 +2877,6 @@ BOOL supGetWin32FileName(
 
     do {
 
-        RtlSecureZeroMemory(&NtFileName, sizeof(NtFileName));
         RtlInitUnicodeString(&NtFileName, FileName);
         InitializeObjectAttributes(&obja, &NtFileName, OBJ_CASE_INSENSITIVE, 0, NULL);
 
@@ -3126,57 +3123,105 @@ HWINSTA supOpenWindowStationFromContext(
     return hObject;
 }
 
-<<<<<<< HEAD
 /*
-HWINSTA supOpenWindowStationFromContext(
-    _In_ PROP_OBJECT_INFO *Context,
-    _In_ BOOL fInherit,
-    _In_ ACCESS_MASK dwDesiredAccess)
+* supQueryObjectTrustLabel
+*
+* Purpose:
+*
+* Query object trust label protection origin and level.
+*
+* Note: hObject must be opened with READ_CONTROL.
+*
+*/
+BOOL supQueryObjectTrustLabel(
+    _In_ HANDLE hObject,
+    _Out_ PULONG ProtectionType,
+    _Out_ PULONG ProtectionLevel)
 {
-    NTSTATUS Status = STATUS_UNSUCCESSFUL;
-    HWINSTA hObject = NULL;
-    HANDLE hRootDirectory = NULL;
-    UNICODE_STRING CurrentWinstaDir;
-    UNICODE_STRING WinstaDir;
-    UNICODE_STRING WinstaName;
-    OBJECT_ATTRIBUTES obja;
+    BOOL                            bCond = FALSE, bResult = FALSE;   
+    BOOLEAN                         saclPresent = FALSE, saclDefaulted = FALSE;
+    ULONG                           i, Length = 0, returnLength = 0;
 
-    if (supxGetWindowStationName(&CurrentWinstaDir)) {
-        RtlInitUnicodeString(&WinstaDir, Context->lpCurrentObjectPath);
-        if (RtlEqualUnicodeString(&WinstaDir, &CurrentWinstaDir, TRUE)) {
-            hObject = OpenWindowStation(Context->lpObjectName, fInherit, dwDesiredAccess);
-            if (hObject)
-                Status = STATUS_SUCCESS;
+    NTSTATUS                        Status;
+
+    PSID                            aceSID;
+    PACL                            sacl = NULL;
+    PACE_HEADER                     aceHeader;
+    PSYSTEM_PROCESS_TRUST_LABEL_ACE ace;
+
+    ACL_SIZE_INFORMATION            aclSize;
+    PSECURITY_DESCRIPTOR            pSD = NULL;
+
+    *ProtectionType = 0;
+    *ProtectionLevel = 0;
+
+    do {
+
+        //
+        // Query Security Descriptor for given object.
+        //
+        Length = PAGE_SIZE;
+        pSD = (PSECURITY_DESCRIPTOR)supHeapAlloc((SIZE_T)Length);
+        if (pSD == NULL)
+            break;
+
+        Status = NtQuerySecurityObject(hObject,
+            PROCESS_TRUST_LABEL_SECURITY_INFORMATION,
+            pSD, Length, &returnLength);
+
+        if (Status == STATUS_BUFFER_TOO_SMALL) {
+            supHeapFree(pSD);
+
+            pSD = (PSECURITY_DESCRIPTOR)supHeapAlloc((SIZE_T)returnLength);
+            if (pSD == NULL)
+                break;
+
+            Status = NtQuerySecurityObject(hObject,
+                PROCESS_TRUST_LABEL_SECURITY_INFORMATION,
+                pSD, Length, &returnLength);
         }
-        else {
 
-            InitializeObjectAttributes(&obja, &WinstaDir, OBJ_CASE_INSENSITIVE, NULL, NULL);
+        if (!NT_SUCCESS(Status))
+            break;
 
-            Status = NtOpenDirectoryObject(&hRootDirectory,
-                DIRECTORY_TRAVERSE,
-                &obja);
+        //
+        // Query SACL from SD.
+        //
+        if (!NT_SUCCESS(RtlGetSaclSecurityDescriptor(pSD, 
+            &saclPresent, 
+            &sacl, 
+            &saclDefaulted))) break;
 
-            if (NT_SUCCESS(Status)) {
+        if (!sacl)
+            break;
 
-                RtlInitUnicodeString(&WinstaName, Context->lpObjectName);
-                InitializeObjectAttributes(&obja, &WinstaName, OBJ_CASE_INSENSITIVE, hRootDirectory, NULL);
+        //
+        // Query SACL size.
+        //
+        if (!NT_SUCCESS(RtlQueryInformationAcl(sacl, 
+            &aclSize, 
+            sizeof(aclSize), 
+            AclSizeInformation))) break;
 
-                if (fInherit)
-                    obja.Attributes |= OBJ_INHERIT;
-
-                hObject = g_ExtApiSet.NtUserOpenWindowStation(&obja, dwDesiredAccess);
-
-                Status = RtlGetLastNtStatus();
-
-                NtClose(hRootDirectory);
+        //
+        // Locate trust label ace.
+        //
+        for (i = 0; i < aclSize.AceCount; i++) {
+            if (NT_SUCCESS(RtlGetAce(sacl, i, (LPVOID)&aceHeader))) {
+                if (aceHeader->AceType == SYSTEM_PROCESS_TRUST_LABEL_ACE_TYPE) {
+                    ace = (SYSTEM_PROCESS_TRUST_LABEL_ACE*)aceHeader;
+                    aceSID = (PSID)(&ace->SidStart);
+                    *ProtectionType = *RtlSubAuthoritySid(aceSID, 0);
+                    *ProtectionLevel = *RtlSubAuthoritySid(aceSID, 1);
+                    bResult = TRUE;
+                    break;
+                }
             }
-
         }
-        RtlFreeUnicodeString(&CurrentWinstaDir);
-    }
 
-    SetLastError(RtlNtStatusToDosErrorNoTeb(Status));
-    return hObject;
-}*/
-=======
->>>>>>> refs/remotes/origin/master
+    } while (bCond);
+
+    if (pSD) supHeapFree(pSD);
+
+    return bResult;
+}

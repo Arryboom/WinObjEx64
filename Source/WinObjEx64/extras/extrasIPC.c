@@ -4,9 +4,9 @@
 *
 *  TITLE:       EXTRASIPC.C
 *
-*  VERSION:     1.52
+*  VERSION:     1.55
 *
-*  DATE:        08 Jan 2018
+*  DATE:        31 Aug 2018
 *
 *  IPC supported: Pipes, Mailslots
 *
@@ -148,7 +148,6 @@ BOOL CALLBACK IpcOpenObjectMethod(
     }
     *phObject = NULL;
 
-    RtlSecureZeroMemory(&uStr, sizeof(uStr));
     RtlInitUnicodeString(&uStr, Context->lpCurrentObjectPath);
     InitializeObjectAttributes(&obja, &uStr, OBJ_CASE_INSENSITIVE, NULL, NULL);
     hObject = NULL;
@@ -609,7 +608,6 @@ VOID IpcDlgQueryInfo(
 
     __try {
 
-        RtlSecureZeroMemory(&uStr, sizeof(uStr));
         RtlInitUnicodeString(&uStr, lpObjectRoot);
         InitializeObjectAttributes(&obja, &uStr, OBJ_CASE_INSENSITIVE, NULL, NULL);
         status = NtOpenFile(&hObject, FILE_LIST_DIRECTORY, &obja, &iost,
@@ -823,17 +821,16 @@ VOID extrasCreateIpcDialog(
 
     EXTRASCALLBACK CallbackParam;
 
-    if (Mode >= IpcMaxMode)
-        return;
-
-    dlgIndex = 0;
-    if (Mode == IpcModeMailshots)
+    switch (Mode) {
+    case IpcModeMailshots:
         dlgIndex = WOBJ_IPCDLG_MSLOT_IDX;
-    else if (Mode == IpcModeNamedPipes)
+        break;
+    case IpcModeNamedPipes:
         dlgIndex = WOBJ_IPCDLG_PIPES_IDX;
-
-    if ((dlgIndex != WOBJ_IPCDLG_MSLOT_IDX) &&
-        (dlgIndex != WOBJ_IPCDLG_PIPES_IDX)) return;
+        break;
+    default:
+        return;
+    }
 
     //
     // Allow only one dialog.

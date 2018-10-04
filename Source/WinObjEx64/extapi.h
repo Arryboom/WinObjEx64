@@ -31,19 +31,10 @@ typedef NTSTATUS (NTAPI *pfnNtManagePartition)(
     _Inout_ PVOID PartitionInformation,
     _In_ SIZE_T PartitionInformationLength
     );
-<<<<<<< HEAD
-
-typedef HWINSTA(NTAPI* pfnNtUserOpenWindowStation)(
-    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
-    _In_ ACCESS_MASK DesiredAccess
-    );
-=======
->>>>>>> refs/remotes/origin/master
 
 typedef struct _EXTENDED_API_SET {
     pfnNtOpenPartition NtOpenPartition;
     pfnNtManagePartition NtManagePartition;
-    pfnNtUserOpenWindowStation NtUserOpenWindowStation;
 } EXTENDED_API_SET, *PEXTENDED_API_SET;
 
 NTSTATUS ExApiSetInit(

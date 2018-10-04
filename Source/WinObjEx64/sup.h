@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.53
+*  VERSION:     1.55
 *
-*  DATE:        07 Mar 2018
+*  DATE:        07 Sep 2018
 *
 *  Common header file for the program support routines.
 *
@@ -72,10 +72,10 @@ extern SCMDB g_scmDB;
 extern POBJECT_TYPES_INFORMATION g_pObjectTypesInfo;
 
 #ifndef _DEBUG
-PVOID FORCEINLINE supHeapAlloc(
+FORCEINLINE PVOID supHeapAlloc(
     _In_ SIZE_T Size);
 
-BOOL FORCEINLINE supHeapFree(
+FORCEINLINE BOOL supHeapFree(
     _In_ PVOID Memory);
 #else
 PVOID supHeapAlloc(
@@ -315,5 +315,10 @@ HWINSTA supOpenWindowStationFromContext(
     _In_ PROP_OBJECT_INFO *Context,
     _In_ BOOL fInherit,
     _In_ ACCESS_MASK dwDesiredAccess);
+
+BOOL supQueryObjectTrustLabel(
+    _In_ HANDLE hObject,
+    _Out_ PULONG ProtectionType,
+    _Out_ PULONG ProtectionLevel);
 
 #define PathFileExists(lpszPath) (GetFileAttributes(lpszPath) != (DWORD)-1)

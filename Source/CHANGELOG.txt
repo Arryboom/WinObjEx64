@@ -1,3 +1,12 @@
+v1.5.6
+Merge pull request #7, fix Job object process list display
+
+v1.5.5
+tweaked PTL display
+
+v1.5.4
+added display of Process Trust Label for Directory object type
+
 v1.5.3
 OpenWindowStation fix
 

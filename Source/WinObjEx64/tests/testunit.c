@@ -4,9 +4,9 @@
 *
 *  TITLE:       TESTUNIT.C
 *
-*  VERSION:     1.52
+*  VERSION:     1.56
 *
-*  DATE:        08 Jan 2018
+*  DATE:        04 Oct 2018
 *
 *  Test code used while debug.
 *
@@ -25,6 +25,7 @@ HANDLE g_TestIoCompletion = NULL, g_TestTransaction = NULL;
 HANDLE g_TestNamespace = NULL, g_TestMutex = NULL;
 HANDLE g_TestMailslot = NULL;
 HANDLE g_DebugObject = NULL;
+HANDLE g_TestJob = NULL;
 
 VOID TestApiPort(
     VOID
@@ -38,10 +39,8 @@ VOID TestDebugObject(
 {
     NTSTATUS status;
     OBJECT_ATTRIBUTES obja;
-    UNICODE_STRING    ustr;
+    UNICODE_STRING    ustr = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\TestDebugObject");
 
-    ustr.Buffer = NULL;
-    RtlInitUnicodeString(&ustr, L"\\BaseNamedObjects\\TestDebugObject");
     InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
     status = NtCreateDebugObject(&g_DebugObject, DEBUG_ALL_ACCESS, &obja, 0);
     if (NT_SUCCESS(status)) {
@@ -56,7 +55,7 @@ VOID TestMailslot(
     BOOL bCond = FALSE;
     NTSTATUS status;
     OBJECT_ATTRIBUTES obja;
-    UNICODE_STRING    ustr;
+    UNICODE_STRING    ustr = RTL_CONSTANT_STRING(L"\\Device\\Mailslot\\TestMailslot");
     IO_STATUS_BLOCK iost;
     LARGE_INTEGER readTimeout;
     PSID pEveryoneSID = NULL, pAdminSID = NULL;
@@ -113,9 +112,6 @@ VOID TestMailslot(
         readTimeout.HighPart = 0x7FFFFFFF;
         readTimeout.LowPart = 0xFFFFFFFF;
 
-        ustr.Buffer = NULL;
-        RtlInitUnicodeString(&ustr, L"\\Device\\Mailslot\\TestMailslot");
-
         InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, pSD);
         status = NtCreateMailslotFile(&g_TestMailslot,
             GENERIC_READ | SYNCHRONIZE | WRITE_DAC,
@@ -139,11 +135,10 @@ VOID TestPartition(
     NTSTATUS status;
     HANDLE TargetHandle = NULL;
     OBJECT_ATTRIBUTES obja;
-    UNICODE_STRING    ustr;
+    UNICODE_STRING    ustr = RTL_CONSTANT_STRING(L"\\KernelObjects\\MemoryPartition0");
 
     if (g_ExtApiSet.NtOpenPartition != NULL) {
-        ustr.Buffer = NULL;
-        RtlInitUnicodeString(&ustr, L"\\KernelObjects\\MemoryPartition0");
+
         InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
         status = g_ExtApiSet.NtOpenPartition(&TargetHandle, MEMORY_PARTITION_QUERY_ACCESS, &obja);
         if (NT_SUCCESS(status)) {
@@ -158,11 +153,9 @@ VOID TestIoCompletion(
 )
 {
     OBJECT_ATTRIBUTES obja;
-    UNICODE_STRING    ustr;
+    UNICODE_STRING    ustr = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\TestIoCompletion");
 
     //IoCompletion
-    ustr.Buffer = NULL;
-    RtlInitUnicodeString(&ustr, L"\\BaseNamedObjects\\TestIoCompletion");
     InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
     NtCreateIoCompletion(&g_TestIoCompletion, IO_COMPLETION_ALL_ACCESS, &obja, 100);
 }
@@ -177,7 +170,7 @@ VOID TestTimer(
 
     liDueTime.QuadPart = -1000000000000LL;
 
-    hTimer = CreateWaitableTimer(NULL, TRUE, L"TestTimer");
+    hTimer = CreateWaitableTimer(NULL, TRUE, L"Global\\TestTimer");
     if (hTimer) {
         SetWaitableTimer(hTimer, &liDueTime, 0, NULL, NULL, 0);
     }
@@ -188,11 +181,9 @@ VOID TestTransaction(
 )
 {
     OBJECT_ATTRIBUTES obja;
-    UNICODE_STRING    ustr;
+    UNICODE_STRING    ustr = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\TestTransaction");
 
     //TmTx
-    ustr.Buffer = NULL;
-    RtlInitUnicodeString(&ustr, L"\\BaseNamedObjects\\TestTransaction");
     InitializeObjectAttributes(&obja, &ustr, OBJ_CASE_INSENSITIVE, NULL, NULL);
     NtCreateTransaction(&g_TestTransaction, TRANSACTION_ALL_ACCESS, &obja, NULL, NULL, 0, 0, 0, NULL, NULL);
 }
@@ -268,17 +259,61 @@ VOID TestWinsta(
     HWINSTA hWinsta;
     PROP_OBJECT_INFO Context;
 
-    Context.lpCurrentObjectPath = L"\\Windows\\WindowStations";
-    //Context.lpCurrentObjectPath = L"\\Sessions\\1\\Windows\\WindowStations";
+    //Context.lpCurrentObjectPath = L"\\Windows\\WindowStations";
+    Context.lpCurrentObjectPath = L"\\Sessions\\1\\Windows\\WindowStations";
     Context.lpObjectName = L"Winsta0";
 
-    hWinsta = supOpenWindowStationFromContext(&Context, FALSE, READ_CONTROL);
-    if (hWinsta) {
+    hWinsta = OpenWindowStation(L"WinSta0", FALSE, WINSTA_ALL_ACCESS);
 
+    //hWinsta = supOpenWindowStationFromContext(&Context, FALSE, READ_CONTROL);
+    if (hWinsta) {
+        CloseHandle(hWinsta);
         CloseWindowStation(hWinsta);
         Status = RtlGetLastNtStatus();
         if (NT_SUCCESS(Status))
             Beep(0, 0);
+    }
+}
+
+VOID TestJob()
+{
+    UINT i;
+    WCHAR szBuffer[MAX_PATH + 1];
+
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    g_TestJob = CreateJobObject(NULL, L"Global\\TestJob");
+    if (g_TestJob) {
+
+        for (i = 0; i < 9; i++) {
+
+            RtlSecureZeroMemory(&szBuffer, sizeof(szBuffer));
+            ExpandEnvironmentStrings(L"%ComSpec%", szBuffer, MAX_PATH);
+
+            si.cb = sizeof(si);
+            GetStartupInfo(&si);
+
+            si.dwFlags = STARTF_USESHOWWINDOW;
+            si.wShowWindow = SW_HIDE;
+
+            if (CreateProcess(
+                szBuffer,
+                NULL,
+                NULL,
+                NULL,
+                FALSE,
+                0,
+                NULL,
+                NULL,
+                &si,
+                &pi)) 
+            {
+                AssignProcessToJobObject(g_TestJob, pi.hProcess);
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+            }
+        }
     }
 }
 
@@ -295,6 +330,7 @@ VOID TestStart(
     TestTimer();
     TestTransaction();
     TestWinsta();
+    TestJob();
 }
 
 VOID TestStop(
@@ -313,5 +349,9 @@ VOID TestStop(
     }
     if (g_TestMailslot) {
         NtClose(g_TestMailslot);
+    }
+    if (g_TestJob) {
+        TerminateJobObject(g_TestJob, 0);
+        NtClose(g_TestJob);
     }
 }
